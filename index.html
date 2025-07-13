@@ -1,20 +1,389 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <link href="style.css" rel="stylesheet" type="text/css" />
-    <title>띠떵이😘.html</title>
-  </head>
-  <body>
-    <button onclick="magic(event)"><button_size>누르면 마법시작</button></button_size>
-    <h1>나의 소개</h1>
-    <h2>곽지성 특 : 예쁨,큐티,프리티</h2>
-    <br>😍😍😍😍😍😍😍</br>
-    <p>😘😘😘😘😘😘😘</p>
-    <p>(❁´◡`❁)</p>
-    <script src="scsc.js">
- 
+\<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>방탈출: 모르는 교실에 갇혔다(최종 완성본)</title>
+    <style>
+        /* 기본 스타일 */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; font-family: 'Malgun Gothic', sans-serif;
+            background-color: #000;
+        }
+
+        /* 게임 주 컨테이너 */
+        #game-container {
+            position: relative; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            transition: background-image 1s ease-in-out;
+        }
+
+        /* 단서(상호작용 객체) 스타일 */
+        .clue {
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.05);
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: background-color 0.3s, border 0.3s, box-shadow 0.3s;
+            border-radius: 10px;
+            display: none;
+        }
+        .clue:hover {
+            background-color: rgba(255, 255, 0, 0.3);
+            border: 3px dashed yellow;
+            box-shadow: 0 0 15px yellow;
+        }
+
+        /* --- 각 방의 단서 위치 --- */
+        #clue-blackboard { top: 34%; left: 38%; width: 28%; height: 36%; }
+        #door-to-hallway { top: 24%; left: 75%; width: 16%; height: 62%; }
+        #clue-locker { top: 20%; left: 25%; width: 25%; height: 70%; }
+        #door-to-classroom { top: 20%; left: 3%; width: 15%; height: 75%; }
+        #door-to-sciencelab { top: 25%; left: 78%; width: 18%; height: 65%; }
+        #clue-desk { top: 65%; left: 30%; width: 40%; height: 30%; }
+        #door-to-hallway-from-lab { top: 20%; left: 2%; width: 20%; height: 75%; }
+
+        /* 메시지 및 퍼즐 모달 스타일 */
+        #message-box {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 80%; max-width: 800px; padding: 25px;
+            background-color: rgba(0, 0, 0, 0.85); color: #00ff41;
+            border-radius: 10px; text-align: left; font-size: 1.3em;
+            font-family: 'Courier New', Courier, monospace;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.5s, visibility 0.5s;
+            z-index: 10;
+        }
+        #message-box.show { opacity: 1; visibility: visible; }
+
+        #puzzle-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: none; justify-content: center; align-items: center;
+            z-index: 20;
+            opacity: 0; transition: opacity 0.4s ease-out;
+        }
+        #puzzle-modal.show { opacity: 1; }
+        #puzzle-container {
+            background-color: #1a1a1a; color: white; padding: 30px;
+            border-radius: 15px; text-align: center;
+            max-width: 90%; width: 600px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            transform: scale(0.9); transition: transform 0.4s ease-out;
+        }
+        #puzzle-modal.show #puzzle-container { transform: scale(1); }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        .shake { animation: shake 0.5s; }
+
+        #puzzle-title { font-size: 2em; margin-bottom: 15px; color: #ffc107; }
+        #puzzle-description { font-size: 1.1em; margin-bottom: 20px; line-height: 1.6; }
+        .quiz-input {
+            width: 80%; padding: 10px; margin-top: 10px;
+            border: 2px solid #555; background-color: #333;
+            color: white; font-size: 1.2em; border-radius: 5px; text-align: center;
+            transition: box-shadow 0.3s, border-color 0.3s;
+        }
+        .quiz-input:focus {
+            border-color: #ffc107;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+            outline: none;
+        }
+        #quiz-input[type=number] { letter-spacing: 1em; }
+        .submit-btn {
+            padding: 10px 25px; font-size: 1.1em; cursor: pointer;
+            background-color: #ffc107; color: black; border: none;
+            border-radius: 5px; margin-top: 20px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        .submit-btn:active { transform: scale(0.95); }
+
+        /* 화면 전환 및 시작 화면 스타일 */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000; z-index: 99;
+            opacity: 1;
+            transition: opacity 0.7s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #start-button {
+            padding: 15px 40px;
+            font-size: 1.5em;
+            color: white;
+            background-color: #ffc107;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: black;
+            font-weight: bold;
+        }
+        #start-title {
+            color: white;
+            font-size: 3em;
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="clue-blackboard" class="clue" data-room="room1"></div>
+        <div id="door-to-hallway" class="clue" data-room="room1"></div>
+        <div id="clue-locker" class="clue" data-room="room2"></div>
+        <div id="door-to-classroom" class="clue" data-room="room2"></div>
+        <div id="door-to-sciencelab" class="clue" data-room="room2"></div>
+        <div id="clue-desk" class="clue" data-room="room3"></div>
+        <div id="door-to-hallway-from-lab" class="clue" data-room="room3"></div>
+    </div>
+    <div id="message-box"></div>
+    <div id="puzzle-modal">
+        <div id="puzzle-container">
+            <h2 id="puzzle-title"></h2>
+            <p id="puzzle-description"></p>
+            <input type="text" id="quiz-input" class="quiz-input">
+            <br>
+            <button id="puzzle-submit" class="submit-btn">확인</button>
+        </div>
+    </div>
+    <div id="overlay">
+        <h1 id="start-title">방탈출: 모르는 교실에 갇혔다</h1>
+        <button id="start-button">시 작</button>
+    </div>
+
+    <!-- 오디오 파일들 -->
+    <audio id="sfx-click" src="https://storage.googleapis.com/aai-web-samples/room-escape/sfx_click.wav" preload="auto"></audio>
+    <audio id="sfx-correct" src="https://storage.googleapis.com/aai-web-samples/room-escape/sfx_correct.wav" preload="auto"></audio>
+    <audio id="sfx-wrong" src="https://storage.googleapis.com/aai-web-samples/room-escape/sfx_wrong.wav" preload="auto"></audio>
+    <audio id="sfx-door" src="https://storage.googleapis.com/aai-web-samples/room-escape/sfx_door.wav" preload="auto"></audio>
+    <audio id="bgm-room1" src="https://storage.googleapis.com/aai-web-samples/room-escape/bgm_room1.mp3" loop preload="auto"></audio>
+    <audio id="bgm-room2" src="https://storage.googleapis.com/aai-web-samples/room-escape/bgm_room2.mp3" loop preload="auto"></audio>
+    <audio id="bgm-room3" src="https://storage.googleapis.com/aai-web-samples/room-escape/bgm_room3.mp3" loop preload="auto"></audio>
+    <audio id="bgm-victory" src="https://storage.googleapis.com/aai-web-samples/room-escape/bgm_victory.mp3" loop preload="auto"></audio>
+
+    <script>
+        const gameState = {
+            currentRoom: 'room1',
+            unlockedRooms: ['room1'],
+            puzzlesSolved: { room1: false, room2: false, room3: false },
+            currentPuzzle: null,
+            isTyping: false
+        };
+        const roomData = {
+            room1: { name: "교실", bg: "https://github.com/jisung-pepsi/Tset.Pro/blob/main/Whisk_34d86011da.jpg?raw=true", bgm: "bgm-room1" },
+            room2: { name: "복도", bg: "https://github.com/jisung-pepsi/Tset.Pro/blob/main/Whisk_042d5fdc7e.jpg?raw=true", bgm: "bgm-room2" },
+            room3: { name: "과학실", bg: "https://github.com/jisung-pepsi/Tset.Pro/blob/main/89.jpg?raw=true", bgm: "bgm-room3" }
+        };
+
+        const gameContainer = document.getElementById('game-container');
+        const allClues = document.querySelectorAll('.clue');
+        const messageBox = document.getElementById('message-box');
+        const puzzleModal = document.getElementById('puzzle-modal');
+        const puzzleContainer = document.getElementById('puzzle-container');
+        const puzzleTitle = document.getElementById('puzzle-title');
+        const puzzleDescription = document.getElementById('puzzle-description');
+        const quizInput = document.getElementById('quiz-input');
+        const puzzleSubmitBtn = document.getElementById('puzzle-submit');
+        const overlay = document.getElementById('overlay');
+        const startButton = document.getElementById('start-button');
+
+        let currentBGM = null;
+
+        function playSound(id, volume = 0.7) {
+            const sound = document.getElementById(id);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.volume = volume;
+                sound.play().catch(e => {});
+            }
+        }
+
+        function changeRoom(roomId, isInitial = false) {
+            if (!isInitial && !gameState.unlockedRooms.includes(roomId)) {
+                displayMessage("이 문은 아직 열리지 않는다.");
+                playSound('sfx-wrong');
+                return;
+            }
+            if (!isInitial) playSound('sfx-door');
+            
+            overlay.classList.remove('hidden');
+            
+            setTimeout(() => {
+                gameState.currentRoom = roomId;
+                gameContainer.style.backgroundImage = `url(${roomData[roomId].bg})`;
+                
+                allClues.forEach(clue => {
+                    clue.style.display = clue.dataset.room === roomId ? 'block' : 'none';
+                });
+
+                if (currentBGM) currentBGM.pause();
+                currentBGM = document.getElementById(roomData[roomId].bgm);
+                if (currentBGM) currentBGM.play().catch(e => {});
+
+                if (!isInitial) displayMessage(`${roomData[roomId].name}(으)로 들어왔다.`);
+                overlay.classList.add('hidden');
+            }, 700);
+        }
+
+        function showQuiz(quizId) {
+            playSound('sfx-click');
+            gameState.currentPuzzle = quizId;
+            quizInput.value = '';
+            quizInput.type = 'text';
+            
+            switch (quizId) {
+                case 'room1Quiz':
+                    puzzleTitle.textContent = '교실 칠판의 문제';
+                    puzzleDescription.textContent = '세종대왕이 만든 우리나라 고유의 문자는 무엇인가?';
+                    break;
+                case 'room2Quiz':
+                    puzzleTitle.textContent = '복도 사물함의 다이얼';
+                    puzzleDescription.textContent = '비밀번호는 4자리 숫자이다. (대한민국 월드컵 최고 성적) + (한 손의 손가락 개수) + (북두칠성의 별 개수) + (네잎클로버의 잎 개수)';
+                    quizInput.type = 'number';
+                    break;
+                case 'room3Quiz':
+                    puzzleTitle.textContent = '과학실 실험대의 약품';
+                    puzzleDescription.textContent = '물(H₂O)을 구성하는 두 원소는 수소와 무엇인가?';
+                    break;
+            }
+            puzzleModal.style.display = 'flex';
+            setTimeout(() => {
+                puzzleModal.classList.add('show');
+                quizInput.focus();
+            }, 10);
+        }
+
+        function handleQuizSubmit() {
+            if (!quizInput.value.trim()) return;
+            const answer = quizInput.value.trim().toLowerCase();
+            let isCorrect = false;
+
+            switch (gameState.currentPuzzle) {
+                case 'room1Quiz':
+                    if (answer.includes('훈민정음')) { isCorrect = true; gameState.unlockedRooms.push('room2'); displayMessage("정답이다. 낡은 문에서 '철컥' 하는 소리가 들렸다."); }
+                    break;
+                case 'room2Quiz':
+                    if (answer === '4574') { isCorrect = true; gameState.unlockedRooms.push('room3'); displayMessage("사물함이 열리며 과학실 열쇠를 발견했다!"); }
+                    break;
+                case 'room3Quiz':
+                    if (answer.includes('산소')) { isCorrect = true; handleEscape(); }
+                    break;
+            }
+
+            if (isCorrect) {
+                playSound('sfx-correct');
+                gameState.puzzlesSolved[gameState.currentRoom] = true;
+                puzzleModal.classList.remove('show');
+                setTimeout(() => puzzleModal.style.display = 'none', 400);
+            } else {
+                playSound('sfx-wrong');
+                puzzleContainer.classList.add('shake');
+                setTimeout(() => puzzleContainer.classList.remove('shake'), 500);
+                quizInput.value = '';
+            }
+        }
+
+        function handleEscape() {
+            playSound('sfx-correct');
+            if (currentBGM) currentBGM.pause();
+            currentBGM = document.getElementById('bgm-victory');
+            if (currentBGM) currentBGM.play().catch(e => {});
+
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                gameContainer.innerHTML = ''; 
+                gameContainer.style.backgroundImage = 'url("https://github.com/jisung-pepsi/Tset.Pro/blob/main/%EA%B5%90%EB%AC%B8.jpg?raw=true")';
+                
+                const successMsg = document.createElement('h1');
+                successMsg.textContent = '탈출 성공!';
+                successMsg.style.cssText = `color: white; text-align: center; padding-top: 40vh; font-size: 5em; font-weight: bold; text-shadow: 3px 3px 8px black, 0 0 10px black; opacity: 0; transition: opacity 2s ease-in-out;`;
+                
+                gameContainer.appendChild(successMsg);
+                overlay.classList.add('hidden');
+                setTimeout(() => { successMsg.style.opacity = '1'; }, 500);
+            }, 700);
+        }
+
+        function typewriter(element, text, callback) {
+            if (gameState.isTyping) return;
+            gameState.isTyping = true;
+            element.textContent = '';
+            element.classList.add('show');
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(interval);
+                    gameState.isTyping = false;
+                    if (callback) setTimeout(callback, 1500);
+                }
+            }, 50);
+        }
+
+        function displayMessage(text) {
+            typewriter(messageBox, text, () => {
+                messageBox.classList.remove('show');
+            });
+        }
+
+        // --- 이벤트 리스너 설정 (수정) ---
+        gameContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('clue')) {
+                const id = e.target.id;
+                const isPuzzleSolved = gameState.puzzlesSolved[gameState.currentRoom];
+
+                // 문 클릭 처리
+                if (id.startsWith('door-')) {
+                    if (id === 'door-to-hallway') changeRoom('room2');
+                    else if (id === 'door-to-classroom') changeRoom('room1');
+                    else if (id === 'door-to-sciencelab') changeRoom('room3');
+                    else if (id === 'door-to-hallway-from-lab') changeRoom('room2');
+                }
+                // 퍼즐 단서 클릭 처리
+                else if (id.startsWith('clue-')) {
+                    if (isPuzzleSolved) {
+                        displayMessage("이미 해결한 단서다.");
+                        playSound('sfx-click');
+                    } else {
+                        if (id === 'clue-blackboard') showQuiz('room1Quiz');
+                        else if (id === 'clue-locker') showQuiz('room2Quiz');
+                        else if (id === 'clue-desk') showQuiz('room3Quiz');
+                    }
+                }
+            }
+        });
+
+        puzzleSubmitBtn.addEventListener('click', handleQuizSubmit);
+        quizInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') handleQuizSubmit(); });
+
+        // --- 게임 시작 로직 (수정) ---
+        startButton.addEventListener('click', () => {
+            playSound('sfx-click');
+            overlay.querySelector('h1').style.display = 'none';
+            overlay.querySelector('button').style.display = 'none';
+            
+            // 모든 오디오 로드 시도 (사용자 상호작용 후)
+            document.querySelectorAll('audio').forEach(audio => audio.load());
+
+            setTimeout(() => {
+                changeRoom('room1', true); // isInitial 플래그를 true로 전달
+                setTimeout(() => {
+                    displayMessage("정신을 차려보니 낯선 교실이다. 이곳을 탈출해야 한다...");
+                }, 1000);
+            }, 300);
+        });
     </script>
-    </button>
-  </body>
+</body>
 </html>
